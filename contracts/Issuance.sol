@@ -2,6 +2,7 @@ pragma solidity ^0.4.24;
 
 import "./ERC721.sol";
 import "./ERC20.sol";
+import "./Voting.sol";
 
 contract Issuance {
     
@@ -24,6 +25,7 @@ contract Issuance {
         address issuer;
         address approver;
         address erc20Shares;
+        address voting;
         //uint nftTokenId;
         uint totalShares;
     }
@@ -135,7 +137,49 @@ contract Issuance {
         
         return true;
     }
+
+    function setVotingAddress(
+        address _nft, 
+        uint _tokenId, 
+        address _voting
+    ) 
+        public
+        returns (bool)
+    {
+        require(_nft != address(0));
+        require(_voting != address(0));
+
+        Voting votingContract = Voting(_voting);
+        require (votingContract.checkVoteStatus() == false);
+
+        IssuanceData storage metadata = lookup[_nft][_tokenId];
+        metadata.voting = _voting;
+    }
+
+    function getMetadataForNft(
+        address _nft,
+        uint _tokenId
+    )
+        public
+        view
+        returns (address issuer, address approver, address erc20Shares, address voting, uint totalShares)
+    {
+        require(_nft != address(0));
+        IssuanceData storage data = lookup[_nft][_tokenId];
+        return (data.issuer, data.approver, data.erc20Shares, data.voting, data.totalShares);
+    }
+
+    function mapFrom(address _erc20) public view returns (address nft, uint tokenId) {
+        require(_erc20 != address(0));
+        NftKeyTuple storage tuple = nftKeyTupleLookup[_erc20];
+        return (tuple.nft, tuple.tokenId);
+    }
     
+    
+
+
+    /* Private helper functions
+    */
     function expunge(address _nft, uint _tokenId, address _erc20Shares) private {
         delete lookup[_nft][_tokenId];
         delete nftKeyTupleLookup[_erc20Shares];
