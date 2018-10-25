@@ -284,7 +284,7 @@ contract Voting {
         paymentContract.transferFrom(this, _issuance, _currentProposal.paymentAmount);
 
         //Issuance issuance = Issuance(_issuance);
-        
+        // need an erc20 token that outputs an iterable list of addresses and percentages
 
         delete _currentProposal;
         delete _balances;
