@@ -4,6 +4,19 @@ import "./ERC721.sol";
 import "./ERC20.sol";
 import "./Voting.sol";
 
+interface IShareTokenFactory {
+
+  function createSharesToken(
+      string tokenName, 
+      string tokenSymbol,
+      uint numberOfSharesToIssue,
+      address initialOwner
+    ) 
+        external view 
+        returns (ERC20);
+
+}
+
 contract Issuance {
     
     address admin;
@@ -103,37 +116,83 @@ contract Issuance {
         emit ShareIssuanceComplete(_nft, _tokenId, _erc20Shares);
         return true;
     }
+
+    function issueFromFactory(
+        address nft, 
+        uint tokenId, 
+        uint numberOfSharestoIssue,
+        string tokenName,
+        string tokenSymbol,
+        IShareTokenFactory shareTokenFactory
+    )
+        public
+        returns (bool)
+    {
+        // lookup existing (if any) metadata for the nft-tokenId tuple
+        IssuanceData storage metadata = lookup[nft][tokenId];
+
+        // only one mapping is valid at a time.  addresses must be nonzero.  number of shares to issue must be at least 1
+        require(metadata.issuer == 0, "Shares are already issued against this NFT.");
+        require(nft != address(0), "Not a valid NFT address");
+        require(shareTokenFactory != address(0), "Not a valid address");
+        require(numberOfSharestoIssue > 0, "Number of shares to issue must be greater than zero.");
+
+        // create the ERC20 token from the factory
+        address issuer = msg.sender;
+        ERC20 erc20Shares = shareTokenFactory.createSharesToken(tokenName, tokenSymbol, numberOfSharestoIssue, issuer);
+        
+        // ensure the total supply of share tokens match the expected amount
+        require(numberOfSharestoIssue == erc20Shares.totalSupply(), "ERC20 total supply does not match the expected amount");
+
+        // map from the erc20 address to the nft-tokenId tuple
+        nftKeyTupleLookup[erc20Shares].nft = nft;
+        nftKeyTupleLookup[erc20Shares].tokenId = tokenId;        
+        
+        // transfer the NFT asset from the issuer to this contract
+        ERC721 nftToken = ERC721(nft);
+        nftToken.safeTransferFrom(issuer, this, tokenId);
+        
+        // set the metadata fields    
+        metadata.issuer = issuer;
+        metadata.approver = this;
+        metadata.erc20Shares = erc20Shares;
+        metadata.totalShares = numberOfSharestoIssue;      
+    }
     
     function retire(
-        address _erc20Shares, 
-        uint _amount
+        address erc20Shares, 
+        uint amount
     ) 
         public
         returns (bool)
     {
-        NftKeyTuple storage nftKeyTuple = nftKeyTupleLookup[_erc20Shares];
-        address _nft = nftKeyTuple.nft;
-        uint _tokenId = nftKeyTuple.tokenId;
+        NftKeyTuple storage nftKeyTuple = nftKeyTupleLookup[erc20Shares];
+        address nft = nftKeyTuple.nft;
+        uint tokenId = nftKeyTuple.tokenId;
         
-        IssuanceData storage metaData = lookup[_nft][_tokenId];
+        IssuanceData storage metaData = lookup[nft][tokenId];
 
-        require(metaData.totalShares == _amount);       // confirm the amount sent is the total amount
-        require(metaData.erc20Shares == _erc20Shares);  // confirm that the expected erc20 address matches the input
-        require(metaData.erc20Shares != address(0));    // confirm that the stored erc20 address has been set
-        
-        ERC20 shares = ERC20(_erc20Shares);
-        
-        require(shares.totalSupply() == _amount);       // confirm that the total token supply is being transferred
+        // confirm that the metadata exists
+        require(metaData.erc20Shares != address(0), "No matching nft to erc20 record.");
+        // confirm the amount sent is the total amount
+        require(metaData.totalShares == amount, "You must send the entire token supply to retire.");     
+        // confirm that the expected erc20 address matches the input
+        require(metaData.erc20Shares == erc20Shares, "Shares address does not match");
+          
+        ERC20 shares = ERC20(erc20Shares);
 
-        // transfer erc20 shares from caller to this contract
-        shares.transferFrom(msg.sender, this, _amount);
+        // confirm that the total token supply is being transferred
+        require(shares.totalSupply() == amount, "You must send the entire token supply to retire.");
+
+        // transfer erc20 shares from caller to this contract.  Will fail if no approval.
+        shares.transferFrom(msg.sender, this, amount);
         
         // unlock the NFT and transfer it to the caller
-        ERC721 nftToken = ERC721(_nft);
-        nftToken.safeTransferFrom(this, msg.sender, _tokenId);
+        ERC721 nftToken = ERC721(nft);
+        nftToken.safeTransferFrom(this, msg.sender, tokenId);
         
         // delete all metadata and lookup info as it is no longer needed - and saves gas costs
-        expunge(_nft, _tokenId, _erc20Shares);
+        expunge(nft, tokenId, erc20Shares);
         
         return true;
     }
@@ -180,8 +239,8 @@ contract Issuance {
 
     /* Private helper functions
     */
-    function expunge(address _nft, uint _tokenId, address _erc20Shares) private {
-        delete lookup[_nft][_tokenId];
-        delete nftKeyTupleLookup[_erc20Shares];
+    function expunge(address nft, uint tokenId, address erc20Shares) private {
+        delete lookup[nft][tokenId];
+        delete nftKeyTupleLookup[erc20Shares];
     }
 }
