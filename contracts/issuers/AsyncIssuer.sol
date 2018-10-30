@@ -1,8 +1,7 @@
 pragma solidity ^0.4.24;
 
-import "./ERC721.sol";
-import "./ERC20.sol";
-import "./Issuance.sol";
+import "../ERC20.sol";
+import "../Issuance.sol";
 
 contract AsyncIssuer {
     
@@ -11,12 +10,12 @@ contract AsyncIssuer {
     Issuance _issuance;
     
     // map of nft and token id to Issuance metadata
-    mapping (address => mapping (uint => IssuanceData)) lookup;
+    mapping (address => mapping (uint => QueueItem)) lookup;
     
     event WorkQueueItemAdded(address nftToken, uint tokenId, uint numberOfSharestoIssue, string tokenName);
     event ShareIssuanceComplete(address nft, uint tokenId, address erc20);
     
-    struct IssuanceData {
+    struct QueueItem {
         address nft;
         address issuer;
         address approver;
@@ -49,7 +48,7 @@ contract AsyncIssuer {
         require(numberOfSharestoIssue > 0);
         
         address issuer = msg.sender;
-        IssuanceData storage item = lookup[nft][tokenId];
+        QueueItem storage item = lookup[nft][tokenId];
         
         item.nft = nft;
         item.issuer = issuer;
@@ -74,7 +73,7 @@ contract AsyncIssuer {
         public
         returns (bool)
     {
-        IssuanceData storage item = lookup[nft][tokenId];
+        QueueItem storage item = lookup[nft][tokenId];
 
         // check that the caller is the approver
         require(item.approver == msg.sender);
@@ -95,7 +94,7 @@ contract AsyncIssuer {
         //remove item from work queue
 
         // bind the nft to the shares
-        _issuance.issueAgainstExisting(item.issuer, item.nft, item.tokenId, item.erc20Shares, item.totalShares);
+        _issuance.issue(item.issuer, item.nft, item.tokenId, item.erc20Shares, item.totalShares);
         
         emit ShareIssuanceComplete(nft, tokenId, erc20Shares);
         return true;
