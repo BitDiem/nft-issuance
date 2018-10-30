@@ -2,7 +2,6 @@ pragma solidity ^0.4.24;
 
 //import "./ERC721.sol";
 import "./ERC20.sol";
-//import "./Voting.sol";
 import "./TokenEscrow.sol";
 
 contract Issuance {
@@ -20,7 +19,6 @@ contract Issuance {
     struct IssuanceData {
         address issuer;
         address erc20Shares;
-        //address voting;
         uint totalShares;
     }
     
@@ -39,20 +37,20 @@ contract Issuance {
         public
         returns (bool)
     {
-        // lookup existing (if any) metadata for the nft-tokenId tuple
-        IssuanceData storage metadata = lookup[nft][tokenId];
-
-        // only one mapping between an NFT and erc20 shares is valid at a time.
-        require(metadata.issuer == address(0), "Shares are already issued against this NFT.");
-
         // all input addresses must be nonzero
-        require(issuer != address(0), "Not a valid issuer address");
-        require(nft != address(0), "Not a valid NFT address.");
-        require(erc20 != address(0), "Not a valid erc20 address.");
+        require(issuer != address(0), "Invalid issuer address");
+        require(nft != address(0), "Invalid NFT address.");
+        require(erc20 != address(0), "Invalid erc20 address.");
 
         // number of shares to issue must be at least 1
         require(numberOfSharesToIssue > 0, "Number of shares to issue must be greater than zero.");
 
+        // lookup existing metadata for the nft-tokenId tuple
+        IssuanceData storage metadata = lookup[nft][tokenId];
+
+        // only one mapping between an NFT and erc20 shares is valid at a time.
+        require(metadata.issuer == address(0), "Shares are already issued against this NFT.");
+    
         ERC20 erc20Shares = ERC20(erc20);
 
         // ensure the total supply of share tokens match the expected amount
@@ -115,40 +113,6 @@ contract Issuance {
         return true;
     }
 
-    /*function setVotingManager(
-        address nft, 
-        uint tokenId, 
-        address voting
-    ) 
-        public
-        returns (bool)
-    {
-        require(nft != address(0));
-        require(voting != address(0));
-
-        IssuanceData storage metadata = lookup[nft][tokenId];
-        require (isNotNull(metadata), "no matching metadata");
-
-        // Check to see if there is an active vote.  We only allow re-assigning of the voting manager if there's no active vote.
-        Voting votingContract = Voting(voting);
-        require (votingContract.checkVoteStatus() == false, "Vote status must be false (non-active)");
-
-        // Approve the voting contract for transferring the NFT out?  This might be a bad idea.  Might need to invert this control
-        ERC721 nftContract = ERC721(nft);
-        nftContract.approve(voting, tokenId);
-
-        metadata.voting = voting;
-    }
-
-    function distributeProposal(address nft, uint tokenId, address paymentType, uint paymentAmount) public
-    {    
-        IssuanceData storage metadata = lookup[nft][tokenId];
-
-        require(msg.sender == metadata.voting);
-
-        // loop through shares owners, distribute paymentType accordingly and in proportion
-    }*/
-
     function findByNftAddressAndTokenId(
         address nft,
         uint tokenId
@@ -157,7 +121,7 @@ contract Issuance {
         view
         returns (address issuer, address erc20Shares, /*address voting,*/ uint totalShares)
     {
-        require(nft != address(0));
+        require(nft != address(0), "Invalid NFT address.");
         IssuanceData memory data = lookup[nft][tokenId];
         return (data.issuer, data.erc20Shares, /*data.voting,*/ data.totalShares);
     }
@@ -167,7 +131,7 @@ contract Issuance {
         view 
         returns (address nft, uint tokenId) 
     {
-        require(erc20 != address(0));
+        require(erc20 != address(0), "Invalid erc20 address.");
         NftKeyTuple memory tuple = nftKeyTupleLookup[erc20];
         return (tuple.nft, tuple.tokenId);
     }

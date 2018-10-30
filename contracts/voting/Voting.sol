@@ -1,9 +1,7 @@
 pragma solidity ^0.4.24;
 
-import "./ERC721.sol";
-import "./ERC20.sol";
-import "./SafeMath.sol";
-import "./Issuance.sol";
+import "../ERC20.sol";
+import "../SafeMath.sol";
 
 /**
  * @title Voting
@@ -36,11 +34,11 @@ contract Voting {
     VoterBalance[] _balances;
     
     event ProposalCreated(
-        address proposer, 
-        uint threshold, 
-        uint minimumVotesRequired, 
-        uint expiration, 
-        address paymentType, 
+        address proposer,
+        uint threshold,
+        uint minimumVotesRequired,
+        uint expiration,
+        address paymentType,
         uint paymentAmount);
 
     event VoteReceived(address voter, bool vote, uint amount);
