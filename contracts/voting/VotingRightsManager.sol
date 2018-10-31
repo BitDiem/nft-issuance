@@ -8,6 +8,25 @@ contract VotingRightsManager {
 
     mapping (address => mapping (uint => Voting)) lookup;
     mapping (address => bool) approvedVotingModules;
+    mapping (address => bool) approverBearer;
+
+    constructor () public {
+        approverBearer[msg.sender] = true;
+    }
+
+    modifier onlyApprover() {
+        //require(isMinter(msg.sender));
+        require (approverBearer[msg.sender]);
+        _;
+    }
+
+    function addApproved(address voting) external onlyApprover {
+        approvedVotingModules[voting] = true;
+    }
+
+    function removeApproved(address voting) external onlyApprover {
+        approvedVotingModules[voting] = false;
+    }
 
     function setVotingManager(
         address nft, 
