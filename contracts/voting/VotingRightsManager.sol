@@ -7,6 +7,7 @@ import "../ERC721.sol";
 contract VotingRightsManager {
 
     mapping (address => mapping (uint => Voting)) lookup;
+    mapping (address => bool) approvedVotingModules;
 
     function setVotingManager(
         address nft, 
@@ -18,6 +19,9 @@ contract VotingRightsManager {
     {
         require(nft != address(0));
         require(voting != address(0));
+
+        // the voting module must be on the list of approved modules
+        require (approvedVotingModules[voting] == true, "That address is not an approved voting module");
 
         Voting votingContract = lookup[nft][tokenId];
         require (address(votingContract) != address(0), "no matching metadata");
