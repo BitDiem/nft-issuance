@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-import "./ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 interface ITokenFactory {
 
@@ -11,6 +11,6 @@ interface ITokenFactory {
       address initialOwner
     ) 
         external view 
-        returns (ERC20);
+        returns (IERC20);
 
 }

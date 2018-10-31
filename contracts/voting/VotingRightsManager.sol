@@ -2,7 +2,7 @@
 pragma solidity ^0.4.24;
 
 import "./Voting.sol";
-import "../ERC721.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 
 contract VotingRightsManager {
 
@@ -49,7 +49,7 @@ contract VotingRightsManager {
         require (votingContract.checkVoteStatus() == false, "Vote status must be false (non-active)");
 
         // Approve the voting contract for transferring the NFT out?  This might be a bad idea.  Might need to invert this control
-        ERC721 nftContract = ERC721(nft);
+        IERC721 nftContract = IERC721(nft);
         nftContract.approve(voting, tokenId);
     }
 

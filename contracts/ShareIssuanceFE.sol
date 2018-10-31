@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
 
-import "./ERC721.sol";
-import "./ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./Issuance.sol";
 import "./TokenEscrow.sol";
 

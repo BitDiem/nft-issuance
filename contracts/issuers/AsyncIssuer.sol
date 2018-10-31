@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-import "../ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../Issuance.sol";
 
 contract AsyncIssuer {
@@ -78,7 +78,7 @@ contract AsyncIssuer {
         // check that the caller is the approver
         require(item.approver == msg.sender);
         
-        ERC20 shares = ERC20(erc20Shares);
+        IERC20 shares = IERC20(erc20Shares);
         
         // check that the total shares matches the actual total supply of tokens
         require(item.totalShares == shares.totalSupply());

@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
 
-//import "./ERC721.sol";
-import "./ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./TokenEscrow.sol";
 
 contract Issuance {
@@ -51,7 +51,7 @@ contract Issuance {
         // only one mapping between an NFT and erc20 shares is valid at a time.
         require(metadata.issuer == address(0), "Shares are already issued against this NFT.");
     
-        ERC20 erc20Shares = ERC20(erc20);
+        IERC20 erc20Shares = IERC20(erc20);
 
         // ensure the total supply of share tokens match the expected amount
         require(numberOfSharesToIssue == erc20Shares.totalSupply(), "ERC20 total supply does not match the expected amount");
@@ -94,7 +94,7 @@ contract Issuance {
         // confirm the amount sent is the total expected supply
         require(data.totalShares == amount, "You must send the entire token supply to redeem.");     
           
-        ERC20 shares = ERC20(erc20Shares);
+        IERC20 shares = IERC20(erc20Shares);
 
         // confirm that the total token supply is being transferred
         require(shares.totalSupply() == amount, "You must send the entire token supply to redeem.");

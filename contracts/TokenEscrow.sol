@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-import "./ERC721.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 
 contract TokenEscrow {
 
@@ -15,7 +15,7 @@ contract TokenEscrow {
         public
         returns (bool)
     {
-        ERC721 nftToken = ERC721(nft);
+        IERC721 nftToken = IERC721(nft);
         nftToken.safeTransferFrom(party, this, tokenId);
         emit TokenEscrowed(party, nft, tokenId);
         return true;
@@ -29,7 +29,7 @@ contract TokenEscrow {
         public
         returns (bool)
     {
-        ERC721 nftToken = ERC721(nft);
+        IERC721 nftToken = IERC721(nft);
         nftToken.safeTransferFrom(this, party, tokenId);
         emit TokenDisbursed(party, nft, tokenId);
         return true;

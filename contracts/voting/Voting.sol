@@ -1,7 +1,8 @@
 pragma solidity ^0.4.24;
 
-import "../ERC20.sol";
-import "../SafeMath.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+
 
 /**
  * @title Voting
@@ -80,7 +81,7 @@ contract Voting {
         require (expiresIn > 0);
 
         // escrow the payment amount for the input erc20 token
-        ERC20 paymentContract = ERC20(paymentType);
+        IERC20 paymentContract = IERC20(paymentType);
         paymentContract.transferFrom(msg.sender, this, paymentAmount);  // will payment come from the caller or the proposer?
 
         // calculate expiration block
@@ -125,7 +126,7 @@ contract Voting {
         address voter = msg.sender;
 
         // transfer shares from the voter to this contract
-        ERC20 token = ERC20(erc20);
+        IERC20 token = IERC20(erc20);
         token.transferFrom(voter, this, amount);
         
         // update balance for this voter, so we can refund them correctly once voting is over
@@ -166,7 +167,7 @@ contract Voting {
         address voter = msg.sender;
 
         // transfer shares from this contract back to the voter
-        ERC20 token = ERC20(erc20);
+        IERC20 token = IERC20(erc20);
         token.transferFrom(this, voter, amount);
         
         // update balance for this voter, so we can refund them correctly once voting is over
@@ -278,7 +279,7 @@ contract Voting {
         // TODO: instead of transfer tokens back to voters, burn the tokens
         // TODO: NOTE THAT NEITHER OF THE ABOVE WILL BE POSSIBLE FROM WITHIN THIS CONTRACT.  WILL HAVE TO CALL INTO THE Issuance CONTRACT
         // Transfer the payment tokens to the issuance contract
-        ERC20 paymentContract = ERC20(_currentProposal.paymentType);
+        IERC20 paymentContract = IERC20(_currentProposal.paymentType);
         paymentContract.transferFrom(this, _issuance, _currentProposal.paymentAmount);
 
         //Issuance issuance = Issuance(_issuance);
@@ -298,7 +299,7 @@ contract Voting {
     }
     
     function transferTokensBackToVoters() private {
-        ERC20 token = ERC20(_erc20);
+        IERC20 token = IERC20(_erc20);
         
         for (uint i = 0; i < _balances.length; i++) {
             token.transferFrom(this, _balances[i].voter, _balances[i].totalVoted);

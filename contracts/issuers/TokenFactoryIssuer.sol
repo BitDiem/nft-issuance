@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-import "../ERC20.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../ITokenFactory.sol";
 import "../Issuance.sol";
 
@@ -29,7 +29,7 @@ contract TokenFactoryIssuer {
     {
         // create the ERC20 token from the factory
         address issuer = msg.sender;
-        ERC20 erc20Shares = shareTokenFactory.createSharesToken(tokenName, tokenSymbol, numberOfSharestoIssue, issuer);
+        IERC20 erc20Shares = shareTokenFactory.createSharesToken(tokenName, tokenSymbol, numberOfSharestoIssue, issuer);
     
         // bind the nft to the shares
         _issuance.issue(issuer, nft, tokenId, erc20Shares, numberOfSharestoIssue);
@@ -52,7 +52,7 @@ contract TokenFactoryIssuerWithInheritance is Issuance {
         address issuer = msg.sender;
 
         // create the ERC20 token from the factory
-        ERC20 erc20Shares = shareTokenFactory.createSharesToken(tokenName, tokenSymbol, numberOfSharestoIssue, issuer);
+        IERC20 erc20Shares = shareTokenFactory.createSharesToken(tokenName, tokenSymbol, numberOfSharestoIssue, issuer);
     
         // bind the nft to the shares
         issue(issuer, nft, tokenId, erc20Shares, numberOfSharestoIssue);
