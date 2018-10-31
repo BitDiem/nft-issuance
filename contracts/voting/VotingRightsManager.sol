@@ -10,7 +10,8 @@ contract VotingRightsManager {
     using Roles for Roles.Role;
 
     mapping (address => mapping (uint => Voting)) lookup;
-    mapping (address => bool) approvedVotingModules;
+    
+    Roles.Role private approvedVotingModules;
     Roles.Role private approverBearer;
 
     constructor () public {
@@ -24,11 +25,11 @@ contract VotingRightsManager {
     }
 
     function addApproved(address voting) external onlyApprover {
-        approvedVotingModules[voting] = true;
+        approvedVotingModules.add(voting);
     }
 
     function removeApproved(address voting) external onlyApprover {
-        approvedVotingModules[voting] = false;
+        approvedVotingModules.remove(voting);
     }
 
     function setVotingManager(
@@ -43,7 +44,7 @@ contract VotingRightsManager {
         require(voting != address(0));
 
         // the voting module must be on the list of approved modules
-        require (approvedVotingModules[voting] == true, "That address is not an approved voting module");
+        require (approvedVotingModules.has(voting), "That address is not an approved voting module");
 
         Voting votingContract = lookup[nft][tokenId];
         require (address(votingContract) != address(0), "no matching metadata");
