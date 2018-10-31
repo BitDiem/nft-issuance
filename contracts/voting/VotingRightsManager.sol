@@ -2,24 +2,21 @@
 pragma solidity ^0.4.24;
 
 import "./Voting.sol";
-import "openzeppelin-solidity/contracts/access/Roles.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 
 contract VotingRightsManager {
 
-    using Roles for Roles.Role;
-
     mapping (address => mapping (uint => Voting)) lookup;
     mapping (address => bool) approvedVotingModules;
-    Roles.Role private approverBearer;
+    mapping (address => bool) approverBearer;
 
     constructor () public {
-        approverBearer.add(msg.sender);
+        approverBearer[msg.sender] = true;
     }
 
     modifier onlyApprover() {
         //require(isMinter(msg.sender));
-        require (approverBearer.has(msg.sender));
+        require (approverBearer[msg.sender]);
         _;
     }
 
