@@ -10,7 +10,7 @@ interface ITokenFactory {
       uint numberOfSharesToIssue,
       address initialOwner
     ) 
-        external view 
+        external 
         returns (IERC20);
 
 }
