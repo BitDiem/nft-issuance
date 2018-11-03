@@ -113,20 +113,20 @@ contract Issuance {
         return true;
     }
 
-    function findByNftAddressAndTokenId(
+    function find(
         address nft,
         uint tokenId
     )
         public
         view
-        returns (address issuer, address erc20Shares, /*address voting,*/ uint totalShares)
+        returns (address issuer, address erc20Shares, uint totalShares)
     {
         require(nft != address(0), "Invalid NFT address.");
         IssuanceData memory data = lookup[nft][tokenId];
-        return (data.issuer, data.erc20Shares, /*data.voting,*/ data.totalShares);
+        return (data.issuer, data.erc20Shares, data.totalShares);
     }
 
-    function findBySharesAddress(address erc20) 
+    function find(address erc20) 
         public 
         view 
         returns (address nft, uint tokenId) 

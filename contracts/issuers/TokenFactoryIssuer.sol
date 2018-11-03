@@ -6,12 +6,8 @@ import "../Issuance.sol";
 
 contract TokenFactoryIssuer {
     
-    address admin;
-    address defaultApprover;
     Issuance _issuance;
     
-    event ShareIssuanceComplete(address nft, uint tokenId, address erc20);
-
     constructor (address issuance) public {
         _issuance = Issuance(issuance);
     }
@@ -20,6 +16,7 @@ contract TokenFactoryIssuer {
         address nft, 
         uint tokenId, 
         uint numberOfSharestoIssue,
+        address issuer,
         string tokenName,
         string tokenSymbol,
         ITokenFactory shareTokenFactory
@@ -28,7 +25,6 @@ contract TokenFactoryIssuer {
         returns (bool)
     {
         // create the ERC20 token from the factory
-        address issuer = msg.sender;
         IERC20 erc20Shares = shareTokenFactory.createSharesToken(tokenName, tokenSymbol, numberOfSharestoIssue, issuer);
     
         // bind the nft to the shares
@@ -36,6 +32,7 @@ contract TokenFactoryIssuer {
     }
 }
 
+/*
 contract TokenFactoryIssuerWithInheritance is Issuance {
     
     function issueFromFactory(
@@ -57,4 +54,4 @@ contract TokenFactoryIssuerWithInheritance is Issuance {
         // bind the nft to the shares
         issue(issuer, nft, tokenId, erc20Shares, numberOfSharestoIssue);
     }
-}
+}*/

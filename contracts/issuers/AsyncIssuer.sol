@@ -5,8 +5,6 @@ import "../Issuance.sol";
 
 contract AsyncIssuer {
     
-    address admin;
-    address defaultApprover;
     Issuance _issuance;
     
     // map of nft and token id to Issuance metadata

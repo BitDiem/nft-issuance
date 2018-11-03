@@ -15,7 +15,6 @@ contract SharesTokenFactory is ITokenFactory {
         returns (IERC20)
     {
         SharesToken token = new SharesToken(tokenName, tokenSymbol, initialOwner, numberOfSharesToIssue);
-        //token.mint
         return token;
     }
 
