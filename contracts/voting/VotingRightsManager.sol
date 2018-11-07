@@ -1,68 +1,61 @@
 
 pragma solidity ^0.4.24;
 
-import "./Voting.sol";
-import "openzeppelin-solidity/contracts/access/Roles.sol";
+import "./IVoting.sol";
+import "./ApprovedModuleList.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 
 contract VotingRightsManager {
 
     using Roles for Roles.Role;
 
-    mapping (address => mapping (uint => Voting)) lookup;
+    mapping (address => mapping (uint => IVoting)) private lookup;
+    ApprovedModuleList private _approvedModuleList;
     
-    Roles.Role private approvedVotingModules;
-    Roles.Role private approverBearer;
-
-    constructor () public {
-        approverBearer.add(msg.sender);
-    }
-
-    modifier onlyApprover() {
-        //require(isMinter(msg.sender));
-        require (approverBearer.has(msg.sender));
-        _;
-    }
-
-    function addApproved(address voting) external onlyApprover {
-        approvedVotingModules.add(voting);
-    }
-
-    function removeApproved(address voting) external onlyApprover {
-        approvedVotingModules.remove(voting);
-    }
-
+    // who can set the voting manager?  anyone! but the proposed module must be on an approved list
     function setVotingManager(
         address nft, 
         uint tokenId, 
-        address voting
+        IVoting votingModule
     ) 
         public
         returns (bool)
     {
         require(nft != address(0));
-        require(voting != address(0));
+        require(address(votingModule) != address(0));  // is this check necessary?
 
-        // the voting module must be on the list of approved modules
-        require (approvedVotingModules.has(voting), "That address is not an approved voting module");
+        // the proposed voting module must be on the list of approved modules
+        require (_approvedModuleList.contains(address(votingModule)), "That address is not an approved voting module");
 
-        Voting votingContract = lookup[nft][tokenId];
-        require (address(votingContract) != address(0), "no matching metadata");
+        // ensure the proposed voting module is not in an active vote
+        require (votingModule.checkVoteStatus() == false, "Vote status must be false (non-active)");
 
-        // Check to see if there is an active vote.  We only allow re-assigning of the voting manager if there's no active vote.
-        require (votingContract.checkVoteStatus() == false, "Vote status must be false (non-active)");
+        // 1. check for an existing voting module contract for this nft
+        // 2. if there is a match, then check whether there is an active vote on the existing voting module
+        // 3. We only allow re-assigning of the voting manager if there's no active vote.
+        IVoting currentModule = lookup[nft][tokenId];
+        if (address(currentModule) != address(0)) {
+            require (currentModule.checkVoteStatus() == false, "Vote status must be false (non-active)");
+        }
+
+        // associate the proposed module with the nft-tokenId unique tuple
+        lookup[nft][tokenId] = votingModule;
 
         // Approve the voting contract for transferring the NFT out?  This might be a bad idea.  Might need to invert this control
-        IERC721 nftContract = IERC721(nft);
-        nftContract.approve(voting, tokenId);
+        //IERC721 nftContract = IERC721(nft);
+        //nftContract.approve(voting, tokenId);
     }
 
-    function distributeProposal(address nft, uint tokenId/*, address paymentType, uint paymentAmount*/) public view
+    function getVotingManager(address nft, uint tokenId) public view returns (IVoting) {
+        return lookup[nft][tokenId];
+    }
+
+    /*function distributeProposal(address nft, uint tokenId, address paymentType, uint paymentAmount) public view
     {    
         Voting votingContract = lookup[nft][tokenId];
 
         require(msg.sender == address(votingContract));
 
         // loop through shares owners, distribute paymentType accordingly and in proportion
-    }
+    }*/
 }

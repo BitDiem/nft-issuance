@@ -1,7 +1,8 @@
 pragma solidity ^0.4.24;
 
-import "./ITokenFactory.sol";
-import "../SharesToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "../issuers/ITokenFactory.sol";
+import "./SharesToken.sol";
 
 contract SharesTokenFactory is ITokenFactory {
 

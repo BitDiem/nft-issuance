@@ -2,6 +2,7 @@ pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./IVoting.sol";
 
 
 /**
@@ -9,7 +10,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @dev Simple majority voting system that allows anyone to propose an offer for an NFT held within the Issuance shares system.  
  * Shareholders vote, votes are weighted by tokens held.
  */
-contract Voting {
+contract BinaryVoting is IVoting {
 
     using SafeMath for uint256;
   
@@ -62,7 +63,7 @@ contract Voting {
      * @param minimumVotesRequired The minimum number of votes required for a proposal to be accepted.
      * @param expiresIn In how many blocks will this vote expire - after which no further votes will be accepted.
      * @param paymentType the ERC20 token address of the proposed payment method.
-     * @param proposer The amount of tokens offered as payment for the underlying NFT asset.
+     * @param paymentAmount The amount of tokens offered as payment for the underlying NFT asset.
      * @return True if the proposal was recorded successfully, otherwise false.
      */
     function propose(
@@ -108,7 +109,7 @@ contract Voting {
      * @param amount The amount of shares to vote with, which will be transferred to this contract until voting ends.
      * @return True if the vote was recorded successfully, otherwise false.
      */
-    function voteOnCurrentProposal(
+    function submitVote(
         address erc20,  // is this necessary?
         bool vote,
         uint amount

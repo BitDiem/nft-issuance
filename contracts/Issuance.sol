@@ -2,19 +2,21 @@ pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "./TokenEscrow.sol";
+import "./utils/ERC721Utils.sol";
 
 contract Issuance {
+
+    using ERC721Utils for IERC721;
     
-    TokenEscrow _escrow;
+    address private _escrow;
     
     // map of nft and token id to Issuance metadata
-    mapping (address => mapping (uint => IssuanceData)) lookup;
+    mapping (address => mapping (uint => IssuanceData)) private lookup;
     
     // map of ERC20 addresses to corresponding NFT unique id tuple
-    mapping (address => NftKeyTuple) nftKeyTupleLookup;
+    mapping (address => NftKeyTuple) private nftKeyTupleLookup;
     
-    event SharesBoundToNft(address issuer, address nft, uint tokenId, address erc20, uint numberOfSharesToIssue);
+    event SharesBoundToNft(address issuer, address nft, uint tokenId, address erc20, uint totalShares);
     
     struct IssuanceData {
         address issuer;
@@ -27,12 +29,25 @@ contract Issuance {
         uint tokenId;
     }
 
+    constructor () public {
+        _escrow = address(this);
+    }
+
+    /**
+     * @dev Issue shares for an NFT token.  Issuance will bind an ERC721 and ERC20 pair to each other, while escrowing the NFT token.
+     * @param issuer The owner of the NFT token.
+     * @param nft The address of the NFT token.
+     * @param tokenId The id of the unique NFT token.
+     * @param erc20 The address of the ERC20 token to be bound to the NFT token.
+     * @param totalShares The total number of shares issued.
+     * @return True if the NFT and shares were linked/bound successfully.
+     */
     function issue(
         address issuer,
         address nft, 
         uint tokenId,
         address erc20,
-        uint numberOfSharesToIssue    
+        uint totalShares    
     )
         public
         returns (bool)
@@ -43,35 +58,44 @@ contract Issuance {
         require(erc20 != address(0), "Invalid erc20 address.");
 
         // number of shares to issue must be at least 1
-        require(numberOfSharesToIssue > 0, "Number of shares to issue must be greater than zero.");
+        require(totalShares > 0, "Number of shares to issue must be greater than zero.");
+
+        // cast addresses to appropriate token types
+        IERC20 erc20Shares = IERC20(erc20);
+        IERC721 nftToken = IERC721(nft);
 
         // lookup existing metadata for the nft-tokenId tuple
         IssuanceData storage metadata = lookup[nft][tokenId];
 
         // only one mapping between an NFT and erc20 shares is valid at a time.
         require(metadata.issuer == address(0), "Shares are already issued against this NFT.");
-    
-        IERC20 erc20Shares = IERC20(erc20);
 
         // ensure the total supply of share tokens match the expected amount
-        require(numberOfSharesToIssue == erc20Shares.totalSupply(), "ERC20 total supply does not match the expected amount");
+        require(totalShares == erc20Shares.totalSupply(), "ERC20 total supply does not match the expected amount.");
+
+        // OPTIONAL: require the issuer owns the total supply of shares
+        //require(totalShares == erc20Shares.balanceOf(issuer))
+
+        // ensure that this contract has approval to transfer the NFT on behalf of the issuer
+        // QUESTION: is this necessary?  or should we let the call to 'safeTransferFrom' fail naturally if approval was not set?
+        require(nftToken.isApprovedOrOwner(address(this), "Transfer approval required.");
+
+        // transfer the NFT asset from the issuer to this contract
+        nftToken.safeTransferFrom(issuer, _escrow, tokenId);
 
         // map from the erc20 address to the nft-tokenId tuple
         nftKeyTupleLookup[erc20Shares].nft = nft;
         nftKeyTupleLookup[erc20Shares].tokenId = tokenId;        
-        
-        // transfer the NFT asset from the issuer to this contract
-        _escrow.hold(issuer, nft, tokenId);
-        //ERC721 nftToken = ERC721(nft);
-        //nftToken.safeTransferFrom(issuer, this, tokenId);
-        
+         
         // set the metadata fields    
         metadata.issuer = issuer;
         metadata.erc20Shares = erc20Shares;
-        metadata.totalShares = numberOfSharesToIssue;
+        metadata.totalShares = totalShares;
 
         // emit the appropriate event
-        emit SharesBoundToNft(issuer, nft, tokenId, erc20, numberOfSharesToIssue);
+        emit SharesBoundToNft(issuer, nft, tokenId, erc20, totalShares);
+
+        return true;
     }
     
     function redeem(
@@ -82,30 +106,30 @@ contract Issuance {
         public
         returns (bool)
     {
-        NftKeyTuple storage nftKeyTuple = nftKeyTupleLookup[erc20Shares];
-        address nft = nftKeyTuple.nft;
-        uint tokenId = nftKeyTuple.tokenId;
+        (address nft, uint tokenId) = find(erc20Shares);
+        (,, uint totalShares) = find(nft, tokenId);   
         
-        IssuanceData storage data = lookup[nft][tokenId];
-
-        // confirm that expected erc20 address matches the input (which also ensures there was a record for the key)
-        require(data.erc20Shares == erc20Shares, "Shares address does not match");
-        
-        // confirm the amount sent is the total expected supply
-        require(data.totalShares == amount, "You must send the entire token supply to redeem.");     
-          
+        // cast addresses to appropriate token types
         IERC20 shares = IERC20(erc20Shares);
+        IERC721 nftToken = IERC721(nft);
 
-        // confirm that the total token supply is being transferred
-        require(shares.totalSupply() == amount, "You must send the entire token supply to redeem.");
+        // confirm that the total token supply is being transferred, and that the total supply is consistent everywhere
+        require(totalShares == amount, "You must send the entire token supply to redeem.");
+        require(totalShares == shares.totalSupply(), "You must send the entire token supply to redeem.");
+
+        // Check and require for approval for the amount of shares to be transfereed
+        // QUESTION: is this necessary?  or should we let the call to 'transferFrom' fail naturally if approval was not set?    
+        require (shares.allowance(redeemer, address(this)) >= amount);
+
+        // Check approval for transferring the NFT to the redeemer
+        // QUESTION: is this necessary?  or should we let the call to 'safeTransferFrom' fail naturally if approval was not set?    
+        require(nftToken.isApprovedOrOwner(address(this), "Transfer approval required.");
 
         // transfer erc20 shares from caller to this contract.  Will fail if no approval.
-        shares.transferFrom(redeemer, this, amount);
+        shares.transferFrom(redeemer, _escrow, amount);
         
         // unlock the NFT and transfer it to the caller
-        _escrow.release(redeemer, nft, tokenId);
-        //ERC721 nftToken = ERC721(nft);
-        //nftToken.safeTransferFrom(this, redeemer, tokenId);
+        nftToken.safeTransferFrom(_escrow, redeemer, tokenId);
         
         // delete all metadata and lookup info as it is no longer needed - and saves gas costs
         expunge(nft, tokenId, erc20Shares);

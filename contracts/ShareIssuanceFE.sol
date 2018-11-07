@@ -3,23 +3,25 @@ pragma solidity ^0.4.24;
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./Issuance.sol";
-import "./TokenEscrow.sol";
 import "./issuers/TokenFactoryIssuer.sol";
 import "./issuers/ITokenFactory.sol";
-import "./issuers/SharestokenFactory.sol";
+import "./token/SharestokenFactory.sol";
+import "./voting/VotingRightsManager.sol";
+import "./voting/IVoting.sol";
 
 
 /**
  Front-end for the entire Share issuance system.  Gives a consistent interface and address for dealing with the system
  */
-contract ShareIssuanceFE is TokenEscrow {
+contract ShareIssuanceFE {
 
     //mapping (address => mapping (uint => Issuance)) nftToIssuanceMap;
     //mapping (address => Issuance) sharesToIssuanceMap;
 
     Issuance private _issuance;
+    VotingRightsManager _votingRightsManager;
 
-    constructor (Issuance issuance) {
+    constructor (Issuance issuance) public {
         _issuance = issuance;
     }
 
@@ -73,5 +75,28 @@ contract ShareIssuanceFE is TokenEscrow {
     {
         Issuance issuance = _issuance;// sharesToIssuanceMap[erc20];
         return issuance.find(erc20);
+    }
+
+    // who can set the voting manager?  anyone! but the proposed module must be on an approved list
+    function setVotingManager(
+        address nft, 
+        uint tokenId, 
+        IVoting votingModule
+    ) 
+        public
+        returns (bool)
+    {
+        return _votingRightsManager.setVotingManager(nft, tokenId, votingModule);
+    }
+
+    function getVotingManager(
+        address nft, 
+        uint tokenId
+    )
+        public
+        view
+        returns (address)
+    {
+        return _votingRightsManager.getVotingManager(nft, tokenId);
     }
 }
