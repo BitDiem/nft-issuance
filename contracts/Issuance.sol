@@ -1,12 +1,15 @@
 pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-solidity/contracts/token/ERC721/IERC721Receiver.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./utils/ERC721Utils.sol";
 
-contract Issuance {
+contract Issuance is IERC721Receiver {
 
     using ERC721Utils for IERC721;
+
+    bytes4 constant ERC721_RECEIVED = bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     
     address private _escrow;
     
@@ -16,7 +19,9 @@ contract Issuance {
     // map of ERC20 addresses to corresponding NFT unique id tuple
     mapping (address => NftKeyTuple) private nftKeyTupleLookup;
     
-    event SharesBoundToNft(address issuer, address nft, uint tokenId, address erc20, uint totalShares);
+    event NftLocked(address issuer, address nft, uint tokenId, address erc20, uint totalShares);
+    event NftReleased(address issuer, address nft, uint tokenId, address erc20, uint totalShares);
+    event EscrowAddressChanged(address escrow);
     
     struct IssuanceData {
         address issuer;
@@ -30,7 +35,7 @@ contract Issuance {
     }
 
     constructor () public {
-        _escrow = address(this);
+        _setEscrow(address(this));
     }
 
     /**
@@ -50,7 +55,7 @@ contract Issuance {
         uint totalShares    
     )
         public
-        returns (bool)
+        //returns (bool)
     {
         // all input addresses must be nonzero
         require(issuer != address(0), "Invalid issuer address");
@@ -78,10 +83,11 @@ contract Issuance {
 
         // ensure that this contract has approval to transfer the NFT on behalf of the issuer
         // QUESTION: is this necessary?  or should we let the call to 'safeTransferFrom' fail naturally if approval was not set?
-        require(nftToken.isApprovedOrOwner(address(this), "Transfer approval required.");
+        require(nftToken.isApprovedOrOwner(address(this), tokenId), "Transfer approval required.");
 
         // transfer the NFT asset from the issuer to this contract
         nftToken.safeTransferFrom(issuer, _escrow, tokenId);
+        //nftToken.transferFrom(issuer, _escrow, tokenId);
 
         // map from the erc20 address to the nft-tokenId tuple
         nftKeyTupleLookup[erc20Shares].nft = nft;
@@ -93,9 +99,9 @@ contract Issuance {
         metadata.totalShares = totalShares;
 
         // emit the appropriate event
-        emit SharesBoundToNft(issuer, nft, tokenId, erc20, totalShares);
+        emit NftLocked(issuer, nft, tokenId, erc20, totalShares);
 
-        return true;
+        //return true;
     }
     
     function redeem(
@@ -123,7 +129,7 @@ contract Issuance {
 
         // Check approval for transferring the NFT to the redeemer
         // QUESTION: is this necessary?  or should we let the call to 'safeTransferFrom' fail naturally if approval was not set?    
-        require(nftToken.isApprovedOrOwner(address(this), "Transfer approval required.");
+        require(nftToken.isApprovedOrOwner(address(this), tokenId), "Transfer approval required.");
 
         // transfer erc20 shares from caller to this contract.  Will fail if no approval.
         shares.transferFrom(redeemer, _escrow, amount);
@@ -133,6 +139,8 @@ contract Issuance {
         
         // delete all metadata and lookup info as it is no longer needed - and saves gas costs
         expunge(nft, tokenId, erc20Shares);
+
+        emit NftReleased(redeemer, nft, tokenId, erc20Shares, totalShares);
         
         return true;
     }
@@ -160,13 +168,26 @@ contract Issuance {
         return (tuple.nft, tuple.tokenId);
     }
     
-    
+    function onERC721Received(address, address, uint, bytes) public returns(bytes4) {
+        return ERC721_RECEIVED;
+        //return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
+    }
 
 
-    /* Private helper functions
+
+
+    /* Private and internal helper functions
     */
     function expunge(address nft, uint tokenId, address erc20Shares) private {
         delete lookup[nft][tokenId];
         delete nftKeyTupleLookup[erc20Shares];
+    }
+
+    function _setEscrow(address escrow) internal {
+        require (escrow != address(0));
+        require (escrow != _escrow);
+
+        _escrow = escrow;
+        emit EscrowAddressChanged(escrow);
     }
 }

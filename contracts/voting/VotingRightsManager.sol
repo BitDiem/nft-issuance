@@ -1,7 +1,7 @@
 
 pragma solidity ^0.4.24;
 
-import "./IVoting.sol";
+import "./systems/IVoting.sol";
 import "./ApprovedModuleList.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 

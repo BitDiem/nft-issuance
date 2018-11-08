@@ -7,7 +7,7 @@ import "./issuers/TokenFactoryIssuer.sol";
 import "./issuers/ITokenFactory.sol";
 import "./token/SharestokenFactory.sol";
 import "./voting/VotingRightsManager.sol";
-import "./voting/IVoting.sol";
+import "./voting/systems/IVoting.sol";
 
 
 /**
