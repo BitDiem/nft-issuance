@@ -5,6 +5,10 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721Receiver.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./utils/ERC721Utils.sol";
 
+/**
+ * @title Issuance
+ * @dev Allows one to associate an ERC20 token with a unique non-fungible ERC721 token, escrowing the latter.
+ */
 contract Issuance is IERC721Receiver {
 
     using ERC721Utils for IERC721;
@@ -131,6 +135,7 @@ contract Issuance is IERC721Receiver {
         shares.transferFrom(redeemer, _escrow, amount);
         
         // unlock the NFT and transfer it to the caller
+        // QUESTION: call safeTransferFrom or normal transferFrom?  Do we assume the redeemer can accept the NFT?
         //nftToken.safeTransferFrom(_escrow, redeemer, tokenId);
         nftToken.transferFrom(_escrow, redeemer, tokenId);
         
