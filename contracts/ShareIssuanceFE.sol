@@ -53,7 +53,7 @@ contract ShareIssuanceFE {
     {
         address redeemer = msg.sender;
         Issuance issuance = _issuance;// sharesToIssuanceMap[erc20Shares];
-        return issuance.redeem(redeemer, erc20Shares, amount);
+        issuance.redeem(redeemer, erc20Shares, amount);
     }
 
     function find(

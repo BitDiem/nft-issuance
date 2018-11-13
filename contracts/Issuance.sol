@@ -55,7 +55,6 @@ contract Issuance is IERC721Receiver {
         uint totalShares    
     )
         public
-        //returns (bool)
     {
         // all input addresses must be nonzero
         require(issuer != address(0), "Invalid issuer address");
@@ -100,8 +99,6 @@ contract Issuance is IERC721Receiver {
 
         // emit the appropriate event
         emit NftLocked(issuer, nft, tokenId, erc20, totalShares);
-
-        //return true;
     }
     
     function redeem(
@@ -110,7 +107,6 @@ contract Issuance is IERC721Receiver {
         uint amount
     ) 
         public
-        returns (bool)
     {
         (address nft, uint tokenId) = find(erc20Shares);
         (,, uint totalShares) = find(nft, tokenId);   
@@ -135,14 +131,13 @@ contract Issuance is IERC721Receiver {
         shares.transferFrom(redeemer, _escrow, amount);
         
         // unlock the NFT and transfer it to the caller
-        nftToken.safeTransferFrom(_escrow, redeemer, tokenId);
+        //nftToken.safeTransferFrom(_escrow, redeemer, tokenId);
+        nftToken.transferFrom(_escrow, redeemer, tokenId);
         
         // delete all metadata and lookup info as it is no longer needed - and saves gas costs
         expunge(nft, tokenId, erc20Shares);
 
         emit NftReleased(redeemer, nft, tokenId, erc20Shares, totalShares);
-        
-        return true;
     }
 
     function find(
