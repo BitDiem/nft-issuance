@@ -27,9 +27,10 @@ contract Issuance is IERC721Receiver {
     event NftReleased(address issuer, address nft, uint tokenId, address erc20, uint totalShares);
     event EscrowAddressChanged(address escrow);
     
+    // for a unique NFT-tokenId tuple, we store data on the issuer, the erc20 address, and the totalShares
     struct IssuanceData {
         address issuer;
-        address erc20Shares;
+        address erc20;
         uint totalShares;
     }
     
@@ -69,7 +70,7 @@ contract Issuance is IERC721Receiver {
         require(totalShares > 0, "Number of shares to issue must be greater than zero.");
 
         // cast addresses to appropriate token types
-        IERC20 erc20Shares = IERC20(erc20);
+        IERC20 erc20Token = IERC20(erc20);
         IERC721 nftToken = IERC721(nft);
 
         // lookup existing metadata for the nft-tokenId tuple
@@ -79,7 +80,7 @@ contract Issuance is IERC721Receiver {
         require(metadata.issuer == address(0), "Shares are already issued against this NFT.");
 
         // ensure the total supply of share tokens match the expected amount
-        require(totalShares == erc20Shares.totalSupply(), "ERC20 total supply does not match the expected amount.");
+        require(totalShares == erc20Token.totalSupply(), "ERC20 total supply does not match the expected amount.");
 
         // OPTIONAL: require the issuer owns the total supply of shares
         //require(totalShares == erc20Shares.balanceOf(issuer))
@@ -93,12 +94,12 @@ contract Issuance is IERC721Receiver {
         //nftToken.transferFrom(issuer, _escrow, tokenId);
 
         // map from the erc20 address to the nft-tokenId tuple
-        nftKeyTupleLookup[erc20Shares].nft = nft;
-        nftKeyTupleLookup[erc20Shares].tokenId = tokenId;        
+        nftKeyTupleLookup[erc20].nft = nft;
+        nftKeyTupleLookup[erc20].tokenId = tokenId;        
          
         // set the metadata fields    
         metadata.issuer = issuer;
-        metadata.erc20Shares = erc20Shares;
+        metadata.erc20 = erc20;
         metadata.totalShares = totalShares;
 
         // emit the appropriate event
@@ -107,32 +108,32 @@ contract Issuance is IERC721Receiver {
     
     function redeem(
         address redeemer,
-        address erc20Shares, 
+        address erc20, 
         uint amount
     ) 
         public
     {
-        (address nft, uint tokenId) = find(erc20Shares);
+        (address nft, uint tokenId) = find(erc20);
         (,, uint totalShares) = find(nft, tokenId);   
         
         // cast addresses to appropriate token types
-        IERC20 shares = IERC20(erc20Shares);
+        IERC20 erc20Token = IERC20(erc20);
         IERC721 nftToken = IERC721(nft);
 
         // confirm that the total token supply is being transferred, and that the total supply is consistent everywhere
         require(totalShares == amount, "You must send the entire token supply to redeem.");
-        require(totalShares == shares.totalSupply(), "You must send the entire token supply to redeem.");
+        require(totalShares == erc20Token.totalSupply(), "You must send the entire token supply to redeem.");
 
         // Check and require for approval for the amount of shares to be transfereed
         // QUESTION: is this necessary?  or should we let the call to 'transferFrom' fail naturally if approval was not set?    
-        require (shares.allowance(redeemer, address(this)) >= amount);
+        require (erc20Token.allowance(redeemer, address(this)) >= amount);
 
         // Check approval for transferring the NFT to the redeemer
         // QUESTION: is this necessary?  or should we let the call to 'safeTransferFrom' fail naturally if approval was not set?    
         require(nftToken.isApprovedOrOwner(address(this), tokenId), "Transfer approval required.");
 
         // transfer erc20 shares from caller to this contract.  Will fail if no approval.
-        shares.transferFrom(redeemer, _escrow, amount);
+        erc20Token.transferFrom(redeemer, _escrow, amount);
         
         // unlock the NFT and transfer it to the caller
         // QUESTION: call safeTransferFrom or normal transferFrom?  Do we assume the redeemer can accept the NFT?
@@ -140,9 +141,9 @@ contract Issuance is IERC721Receiver {
         nftToken.transferFrom(_escrow, redeemer, tokenId);
         
         // delete all metadata and lookup info as it is no longer needed - and saves gas costs
-        expunge(nft, tokenId, erc20Shares);
+        expunge(nft, tokenId, erc20);
 
-        emit NftReleased(redeemer, nft, tokenId, erc20Shares, totalShares);
+        emit NftReleased(redeemer, nft, tokenId, erc20, totalShares);
     }
 
     function find(
@@ -151,11 +152,11 @@ contract Issuance is IERC721Receiver {
     )
         public
         view
-        returns (address issuer, address erc20Shares, uint totalShares)
+        returns (address issuer, address erc20, uint totalShares)
     {
         require(nft != address(0), "Invalid NFT address.");
         IssuanceData memory data = lookup[nft][tokenId];
-        return (data.issuer, data.erc20Shares, data.totalShares);
+        return (data.issuer, data.erc20, data.totalShares);
     }
 
     function find(address erc20) 
@@ -168,9 +169,9 @@ contract Issuance is IERC721Receiver {
         return (tuple.nft, tuple.tokenId);
     }
     
+    // Implement the IERC721Receiver interface to handle safeTransferFrom correctly
     function onERC721Received(address, address, uint, bytes) public returns(bytes4) {
         return ERC721_RECEIVED;
-        //return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
 
@@ -178,9 +179,9 @@ contract Issuance is IERC721Receiver {
 
     /* Private and internal helper functions
     */
-    function expunge(address nft, uint tokenId, address erc20Shares) private {
+    function expunge(address nft, uint tokenId, address erc20) private {
         delete lookup[nft][tokenId];
-        delete nftKeyTupleLookup[erc20Shares];
+        delete nftKeyTupleLookup[erc20];
     }
 
     function _setEscrow(address escrow) internal {
