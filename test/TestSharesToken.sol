@@ -27,6 +27,11 @@ contract TestSharesToken {
         Assert.equal(token.holderCount(), 2, "Incorrect holder count 2");
         Assert.equal(token.holderAt(1), newGuy, "Incorrect token holder 2");
 
+        token.transfer(newGuy, 6);
 
+        Assert.equal(token.balanceOf(issuer), 0, "Incorrect token balance 3");
+        Assert.equal(token.balanceOf(newGuy), 10, "Incorrect token balance 4");
+        Assert.equal(token.holderCount(), 1, "Incorrect holder count 3");
+        Assert.equal(token.holderAt(0), newGuy, "Incorrect token holder 3");     
     }
 }
