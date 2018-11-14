@@ -14,7 +14,7 @@ contract SharesToken is IERC20, ERC20, ERC20Detailed {
     uint8 private constant DECIMALS = 18;
 
     // the combination of the  mapping and array can be used to efficiently track all token holders
-    mapping(address => uint256) private holderIndices;
+    mapping(address => uint) private holderIndices;
     address[] private shareholders;
 
     event ShareholderAdded(address shareholder);
@@ -42,43 +42,36 @@ contract SharesToken is IERC20, ERC20, ERC20Detailed {
         super._transfer(from, to, value);
         
         // add the to address to the list of shareholders if not already present
-        addShareholder(to);
-        removeShareholder(from);
+        _addShareholder(to);
+        _removeShareholder(from);
+    }
+
+    /**
+    * @dev Internal function that mints an amount of the token and assigns it to
+    * an account. This encapsulates the modification of balances such that the
+    * proper events are emitted.
+    * @param account The account that will receive the created tokens.
+    * @param value The amount that will be created.
+    */
+    function _mint(address account, uint256 value) internal {
+        super._mint(account, value);
+
+        _addShareholder(account);
+    }
+
+    /**
+    * @dev Internal function that burns an amount of the token of a given
+    * account.
+    * @param account The account whose tokens will be burnt.
+    * @param value The amount that will be burnt.
+    */
+    function _burn(address account, uint256 value) internal {
+        super._burn(account, value);
+        
+        _removeShareholder(account);
     }
 
     // The following code comes from https://github.com/davesag/ERC884-reference-implementation
-
-    /**
-     *  The `transfer` function MUST NOT allow transfers to addresses that
-     *  have not been verified and added to the contract.
-     *  If the `to` address is not currently a shareholder then it MUST become one.
-     *  If the transfer will reduce `msg.sender`'s balance to 0 then that address
-     *  MUST be removed from the list of shareholders.
-     */
-    /*function transfer(address to, uint256 value)
-        public
-        returns (bool)
-    {
-        updateShareholders(to);
-        pruneShareholders(msg.sender, value);
-        return super.transfer(to, value);
-    }*/
-
-    /**
-     *  The `transferFrom` function MUST NOT allow transfers to addresses that
-     *  have not been verified and added to the contract.
-     *  If the `to` address is not currently a shareholder then it MUST become one.
-     *  If the transfer will reduce `from`'s balance to 0 then that address
-     *  MUST be removed from the list of shareholders.
-     */
-    /*function transferFrom(address from, address to, uint256 value)
-        public
-        returns (bool)
-    {
-        updateShareholders(to);
-        pruneShareholders(from, value);
-        return super.transferFrom(from, to, value);
-    }*/
 
     /**
      *  The number of addresses that own tokens.
@@ -86,7 +79,6 @@ contract SharesToken is IERC20, ERC20, ERC20Detailed {
      */
     function holderCount()
         public
-        //onlyOwner
         view
         returns (uint)
     {
@@ -103,7 +95,6 @@ contract SharesToken is IERC20, ERC20, ERC20Detailed {
      */
     function holderAt(uint256 index)
         public
-        //onlyOwner
         view
         returns (address)
     {
@@ -116,10 +107,9 @@ contract SharesToken is IERC20, ERC20, ERC20Detailed {
      *  and update the `holderIndices` mapping.
      *  @param addr The address to add as a shareholder if it's not already.
      */
-    function addShareholder(address addr)
-        internal
+    function _addShareholder(address addr) internal
     {
-        if (holderIndices[addr] == 0) {
+        if (holderIndices[addr] == 0 && balanceOf(addr) > 0) {
             holderIndices[addr] = shareholders.push(addr);
             emit ShareholderAdded(addr);
         }
@@ -132,29 +122,7 @@ contract SharesToken is IERC20, ERC20, ERC20Detailed {
      *  @param addr The address to prune if their balance will be reduced to 0.
      @  @dev see https://ethereum.stackexchange.com/a/39311
      */
-     // First, commented out version is the original code from the erc884 reference implementation.
-     // Second version is the improved version
-    /*function pruneShareholders(address addr, uint256 value)
-        internal
-    {
-        uint256 balance = _balances[addr] - value;
-        if (balance > 0) {
-            return;
-        }
-        uint256 holderIndex = holderIndices[addr] - 1;
-        uint256 lastIndex = shareholders.length - 1;
-        address lastHolder = shareholders[lastIndex];
-        // overwrite the addr's slot with the last shareholder
-        shareholders[holderIndex] = lastHolder;
-        // also copy over the index (thanks @mohoff for spotting this)
-        // ref https://github.com/davesag/ERC884-reference-implementation/issues/20
-        holderIndices[lastHolder] = holderIndices[addr];
-        // trim the shareholders array (which drops the last entry)
-        shareholders.length--;
-        // and zero out the index for addr
-        holderIndices[addr] = 0;
-    }*/
-    function removeShareholder(address addr)
+    function _removeShareholder(address addr)
         internal
     {
         if (balanceOf(addr) > 0) {
@@ -175,5 +143,4 @@ contract SharesToken is IERC20, ERC20, ERC20Detailed {
 
         emit ShareholderRemoved(addr);
     }
-
 }
