@@ -4,7 +4,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 interface ITokenFactory {
 
-  function createSharesToken(
+  function createToken(
       string tokenName, 
       string tokenSymbol,
       uint numberOfSharesToIssue,
