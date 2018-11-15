@@ -13,7 +13,7 @@ import "./voting/systems/IVoting.sol";
 /**
  Front-end for the entire Share issuance system.  Gives a consistent interface and address for dealing with the system
  */
-contract ShareIssuanceFE {
+contract IssuanceFrontEnd {
 
     //mapping (address => mapping (uint => Issuance)) nftToIssuanceMap;
     //mapping (address => Issuance) sharesToIssuanceMap;
