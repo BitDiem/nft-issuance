@@ -9,17 +9,12 @@ import "../voting/VotingRightsManager.sol";
 import "../voting/systems/IVoting.sol";
 import "../utils/ERC721Utils.sol";
 
-
-
 /**
  Front-end for the entire Share issuance system.  Gives a consistent interface and address for dealing with the system
  */
 contract IssuanceFrontEnd {
 
     using ERC721Utils for IERC721;
-
-    //mapping (address => mapping (uint => Issuance)) nftToIssuanceMap;
-    //mapping (address => Issuance) sharesToIssuanceMap;
 
     Issuance private _issuance;
     VotingRightsManager _votingRightsManager;
@@ -28,6 +23,9 @@ contract IssuanceFrontEnd {
         _issuance = issuance;
     }
 
+    /**
+     * @dev Issue a new erc20 token according to the given parameters, while escrowing the provided NFT
+     */
     function issue(
         address nft, 
         uint tokenId, 
@@ -45,6 +43,9 @@ contract IssuanceFrontEnd {
         _issuance.issue(issuer, nft, tokenId, shares, supply);
     }
 
+    /**
+     * @dev Issue a new erc20 token via the given token factory, while escrowing the provided NFT
+     */
     function issue(
         address nft, 
         uint tokenId, 
@@ -67,11 +68,9 @@ contract IssuanceFrontEnd {
         uint amount
     ) 
         public
-        returns (bool)
     {
         address redeemer = msg.sender;
-        Issuance issuance = _issuance;// sharesToIssuanceMap[erc20Shares];
-        issuance.redeem(redeemer, erc20Shares, amount);
+        _issuance.redeem(redeemer, erc20Shares, amount);
     }
 
     function find(
@@ -82,8 +81,7 @@ contract IssuanceFrontEnd {
         view
         returns (address issuer, address erc20Shares, uint totalShares)
     {
-        Issuance issuance = _issuance;// nftToIssuanceMap[nft][tokenId];
-        return issuance.find(nft, tokenId);
+        return _issuance.find(nft, tokenId);
     }
 
     function find(address erc20) 
@@ -91,8 +89,7 @@ contract IssuanceFrontEnd {
         view 
         returns (address nft, uint tokenId) 
     {
-        Issuance issuance = _issuance;// sharesToIssuanceMap[erc20];
-        return issuance.find(erc20);
+        return _issuance.find(erc20);
     }
 
     // who can set the voting manager?  anyone! but the proposed module must be on an approved list
@@ -102,7 +99,6 @@ contract IssuanceFrontEnd {
         IVoting votingModule
     ) 
         public
-        returns (bool)
     {
         return _votingRightsManager.setVotingManager(nft, tokenId, votingModule);
     }
