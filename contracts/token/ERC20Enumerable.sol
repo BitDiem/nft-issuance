@@ -5,17 +5,17 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title SharesToken
- * @dev A standard ERC20 token derived from Open Zeppelin's implementation - 
- * with the addition of an internal array to track all current shareholders.
+ * @dev A standard ERC20 token inheriting from Open Zeppelin's implementation - 
+ * with the addition of an internal array to track token holders.
  */
 contract ERC20Enumerable is IERC20, ERC20 {
 
     // the combination of the  mapping and array can be used to efficiently track all token holders
-    mapping(address => uint) private holderIndices;
-    address[] private shareholders;
+    mapping(address => uint) private accountToIndexMap;
+    address[] private accounts;
 
-    event ShareholderAdded(address shareholder);
-    event ShareholderRemoved(address shareholder);
+    event AccountAdded(address account);
+    event AccountRemoved(address account);
 
     /**
     * @dev Transfer token for a specified addresses
@@ -26,9 +26,8 @@ contract ERC20Enumerable is IERC20, ERC20 {
     function _transfer(address from, address to, uint256 value) internal {
         super._transfer(from, to, value);
         
-        // add the to address to the list of shareholders if not already present
-        _addShareholder(to);
-        _removeShareholder(from);
+        _addAccount(to);
+        _removeAccount(from);
     }
 
     /**
@@ -41,7 +40,7 @@ contract ERC20Enumerable is IERC20, ERC20 {
     function _mint(address account, uint256 value) internal {
         super._mint(account, value);
 
-        _addShareholder(account);
+        _addAccount(account);
     }
 
     /**
@@ -53,7 +52,7 @@ contract ERC20Enumerable is IERC20, ERC20 {
     function _burn(address account, uint256 value) internal {
         super._burn(account, value);
         
-        _removeShareholder(account);
+        _removeAccount(account);
     }
 
     // The following code comes from https://github.com/davesag/ERC884-reference-implementation
@@ -62,70 +61,76 @@ contract ERC20Enumerable is IERC20, ERC20 {
      *  The number of addresses that own tokens.
      *  @return the number of unique addresses that own tokens.
      */
-    function holderCount()
+    function accountsCount()
         public
         view
         returns (uint)
     {
-        return shareholders.length;
+        return accounts.length;
     }
 
     /**
-     *  By counting the number of token holders using `holderCount`
+     *  By counting the number of token accounts using `accountsCount`
      *  you can retrieve the complete list of token holders, one at a time.
-     *  It MUST throw if `index >= holderCount()`.
+     *  Throws if `index >= accountsCount()`.
      *
      *  @param index The zero-based index of the holder.
      *  @return the address of the token holder with the given index.
      */
-    function holderAt(uint256 index)
+    function accountAt(uint256 index)
         public
         view
         returns (address)
     {
-        require(index < holderCount());
-        return shareholders[index];
+        require(index < accountsCount());
+        return accounts[index];
     }
 
     /**
-     *  If the address is not in the `shareholders` array then push it
-     *  and update the `holderIndices` mapping.
-     *  @param addr The address to add as a shareholder if it's not already.
+     *  Adds an address to the accounts list if not already present, and if the balance is greater than zero.
+     *  NOTE: the stored index is actually the array length (i.e. offset by 1) 
+     *  due to the necessity of having the default value of zero for unset values.
      */
-    function _addShareholder(address addr) internal
+    function _addAccount(address addr) internal
     {
-        if (holderIndices[addr] == 0 && balanceOf(addr) > 0) {
-            holderIndices[addr] = shareholders.push(addr);
-            emit ShareholderAdded(addr);
+        // if there is no index matching this address and the balance of the address is greater than zero, then add it
+        if (accountToIndexMap[addr] == 0 && balanceOf(addr) > 0) {
+            accountToIndexMap[addr] = accounts.push(addr);
+            emit AccountAdded(addr);
         }
     }
 
     /**
-     *  If the address is in the `shareholders` array and the forthcoming
-     *  transfer or transferFrom will reduce their balance to 0, then
-     *  we need to remove them from the shareholders array.
-     *  @param addr The address to prune if their balance will be reduced to 0.
-     @  @dev see https://ethereum.stackexchange.com/a/39311
+     *  Removes an account if the account holder's balance is 0.
      */
-    function _removeShareholder(address addr)
+    function _removeAccount(address accountToDelete)
         internal
     {
-        if (balanceOf(addr) > 0) {
+        if (balanceOf(accountToDelete) > 0) {
             return;
         }
-        uint256 holderIndex = holderIndices[addr] - 1;
-        uint256 lastIndex = shareholders.length - 1;
-        address lastHolder = shareholders[lastIndex];
-        // overwrite the addr's slot with the last shareholder
-        shareholders[holderIndex] = lastHolder;
-        // also copy over the index (thanks @mohoff for spotting this)
-        // ref https://github.com/davesag/ERC884-reference-implementation/issues/20
-        holderIndices[lastHolder] = holderIndices[addr];
-        // trim the shareholders array (which drops the last entry)
-        shareholders.length--;
-        // and zero out the index for addr
-        holderIndices[addr] = 0;
 
-        emit ShareholderRemoved(addr);
+        // get the last item in the array (both index and item)
+        uint lastAccountIndex = accounts.length - 1;
+        address lastAccount = accounts[lastAccountIndex];
+
+        // get the index of the item to be deleted
+        //uint deleteIndex = accountToIndexMap[accountToDelete];
+        uint deleteIndex = accountToIndexMap[accountToDelete] - 1;  // with offset adjustment
+
+        // swap the last item into the item to be deleted in the array
+        accounts[deleteIndex] = lastAccount;
+
+        // delete the last item from the array and trim the array size
+        accounts[lastAccountIndex] = 0;
+        accounts.length--;
+
+        // update the map for the last element
+        accountToIndexMap[lastAccount] = deleteIndex;
+
+        // delete the map for the element that was removed
+        accountToIndexMap[accountToDelete] = 0;
+
+        emit AccountRemoved(accountToDelete);
     }
 }
