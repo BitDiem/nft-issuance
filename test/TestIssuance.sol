@@ -4,7 +4,7 @@ import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "../contracts/Issuance.sol";
+import "../contracts/issue/Issuance.sol";
 import "../contracts/token/SharesToken.sol";
 import "./mocks/MockNft.sol";
 
@@ -31,7 +31,10 @@ contract TestIssuance {
         nft.approve(issuance, tokenId);
         //nft.setApprovalForAll(issuance, true);
 
-        issuance.setApprovalForNft(issuer, nft, tokenId, true);
+        // approve this contract for being able to call the Issuance contract on behalf of the token owner
+        // ERROR - approval should not be needed since the caller (this) is the same as the spender
+        //issuance.setApprovalForNft(issuer, nft, tokenId, true);
+        //issuance.setApprovalForAll(issuer, nft);
 
         issuance.issue(issuer, nft, tokenId, token, 10);
 

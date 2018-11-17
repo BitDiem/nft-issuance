@@ -4,7 +4,7 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721Receiver.sol";
 
 /**
  * @title IERC721Receivable
- * @dev Reusable implementation of of the IERC721Receiver interface
+ * @dev Reusable implementation of the IERC721Receiver interface
  */
 contract IERC721Receivable is IERC721Receiver {
 

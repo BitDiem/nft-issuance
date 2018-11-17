@@ -66,8 +66,8 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
         require(nft != address(0), "Invalid NFT address.");
         require(erc20 != address(0), "Invalid erc20 address.");
 
-        // ensure approval
-        require(isApprovedForNft(issuer, msg.sender, nft, tokenId), "Issuance approval required");
+        // ensure approval, or that the issuer and msg.sender are the same
+        require(_isApprovedOrMessageSender(issuer, msg.sender, nft, tokenId), "Issuance approval required");
 
         // number of shares to issue must be at least 1
         require(totalShares > 0, "Number of shares to issue must be greater than zero.");
