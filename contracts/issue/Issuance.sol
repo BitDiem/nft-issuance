@@ -3,17 +3,17 @@ pragma solidity ^0.4.24;
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721Receiver.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "./utils/ERC721Utils.sol";
+import "../utils/ERC721Utils.sol";
+import "./NftTransferApprovable.sol";
+import "./IERC721Receivable.sol";
 
 /**
  * @title Issuance
  * @dev Allows one to associate an ERC20 token with a unique non-fungible ERC721 token, escrowing the latter.
  */
-contract Issuance is IERC721Receiver {
+contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receiver */{
 
     using ERC721Utils for IERC721;
-
-    bytes4 constant ERC721_RECEIVED = bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     
     address private _escrow;
     
@@ -65,6 +65,9 @@ contract Issuance is IERC721Receiver {
         require(issuer != address(0), "Invalid issuer address");
         require(nft != address(0), "Invalid NFT address.");
         require(erc20 != address(0), "Invalid erc20 address.");
+
+        // ensure approval
+        require(isApprovedForNft(issuer, msg.sender, nft, tokenId), "Issuance approval required");
 
         // number of shares to issue must be at least 1
         require(totalShares > 0, "Number of shares to issue must be greater than zero.");
@@ -167,11 +170,6 @@ contract Issuance is IERC721Receiver {
         require(erc20 != address(0), "Invalid erc20 address.");
         NftKeyTuple memory tuple = nftKeyTupleLookup[erc20];
         return (tuple.nft, tuple.tokenId);
-    }
-    
-    // Implement the IERC721Receiver interface to handle safeTransferFrom correctly
-    function onERC721Received(address, address, uint, bytes) public returns(bytes4) {
-        return ERC721_RECEIVED;
     }
 
 
