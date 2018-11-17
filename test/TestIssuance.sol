@@ -31,6 +31,8 @@ contract TestIssuance {
         nft.approve(issuance, tokenId);
         //nft.setApprovalForAll(issuance, true);
 
+        issuance.setApprovalForNft(issuer, nft, tokenId, true);
+
         issuance.issue(issuer, nft, tokenId, token, 10);
 
         Assert.equal(nft.ownerOf(tokenId), address(issuance), "Owner of token should now be the Issuance contract");
