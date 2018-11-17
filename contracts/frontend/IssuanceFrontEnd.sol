@@ -3,7 +3,7 @@ pragma solidity ^0.4.24;
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "./StandardTokenFactory.sol";
-import "../Issuance.sol";
+import "../issue/Issuance.sol";
 import "../token/ITokenFactory.sol";
 import "../voting/VotingRightsManager.sol";
 import "../voting/systems/IVoting.sol";
@@ -100,7 +100,7 @@ contract IssuanceFrontEnd {
     ) 
         public
     {
-        return _votingRightsManager.setVotingManager(nft, tokenId, votingModule);
+        _votingRightsManager.setVotingManager(nft, tokenId, votingModule);
     }
 
     function getVotingManager(
