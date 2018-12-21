@@ -4,18 +4,19 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/token/ERC721/IERC721Receiver.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../utils/ERC721Utils.sol";
-import "./NftTransferApprovable.sol";
+import "./IssuanceOperationApprovable.sol";
 import "./IERC721Receivable.sol";
+import "../NftBank.sol";
 
 /**
  * @title Issuance
  * @dev Allows one to associate an ERC20 token with a unique non-fungible ERC721 token, escrowing the latter.
  */
-contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receiver */{
+contract Issuance is IssuanceOperationApprovable, /*IERC721Receivable,*/ NftApprovedTransferer {
 
     using ERC721Utils for IERC721;
     
-    address private _escrow;
+    //address private _escrow;
     
     // map of nft and token id to Issuance metadata
     mapping (address => mapping (uint => IssuanceData)) private lookup;
@@ -25,13 +26,14 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
     
     event NftLocked(address issuer, address nft, uint tokenId, address erc20, uint totalShares);
     event NftReleased(address issuer, address nft, uint tokenId, address erc20, uint totalShares);
-    event EscrowAddressChanged(address escrow);
+    //event EscrowAddressChanged(address escrow);
     
     // for a unique NFT-tokenId tuple, we store data on the issuer, the erc20 address, and the totalShares
     struct IssuanceData {
         address issuer;
         address erc20;
         uint totalShares;
+        address nftBank;
     }
     
     struct NftKeyTuple {
@@ -39,9 +41,9 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
         uint tokenId;
     }
 
-    constructor () public {
+    /*constructor () public {
         _setEscrow(address(this));
-    }
+    }*/
 
     /**
      * @dev Issue shares for an NFT token.  Issuance will bind an ERC721 and ERC20 pair to each other, while escrowing the NFT token.
@@ -67,7 +69,7 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
         require(erc20 != address(0), "Invalid erc20 address.");
 
         // ensure approval, or that the issuer and msg.sender are the same
-        require(_isApprovedOrMessageSender(issuer, msg.sender, nft, tokenId), "Issuance approval required");
+        require(_isApprovedOrMessageSender(issuer, nft, tokenId), "Issuance approval required");
 
         // number of shares to issue must be at least 1
         require(totalShares > 0, "Number of shares to issue must be greater than zero.");
@@ -93,8 +95,14 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
         require(nftToken.isApprovedOrOwner(address(this), tokenId), "Transfer approval required.");
 
         // transfer the NFT asset from the issuer to this contract
-        nftToken.safeTransferFrom(issuer, _escrow, tokenId);
+        //nftToken.safeTransferFrom(issuer, _escrow, tokenId);
         //nftToken.transferFrom(issuer, _escrow, tokenId);
+
+
+        NftBank bank = new NftBank();//(nft, tokenId, this);
+        bank.takeFrom(issuer, nft, tokenId, this);
+
+
 
         // map from the erc20 address to the nft-tokenId tuple
         nftKeyTupleLookup[erc20].nft = nft;
@@ -104,6 +112,7 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
         metadata.issuer = issuer;
         metadata.erc20 = erc20;
         metadata.totalShares = totalShares;
+        metadata.nftBank = bank;
 
         // emit the appropriate event
         emit NftLocked(issuer, nft, tokenId, erc20, totalShares);
@@ -117,11 +126,11 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
         public
     {
         (address nft, uint tokenId) = find(erc20);
-        (,, uint totalShares) = find(nft, tokenId);   
+        (,, uint totalShares, address nftBank) = find(nft, tokenId);   
         
         // cast addresses to appropriate token types
         IERC20 erc20Token = IERC20(erc20);
-        IERC721 nftToken = IERC721(nft);
+        //IERC721 nftToken = IERC721(nft);
 
         // confirm that the total token supply is being transferred, and that the total supply is consistent everywhere
         require(totalShares == amount, "You must send the entire token supply to redeem.");
@@ -133,15 +142,17 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
 
         // Check approval for transferring the NFT to the redeemer
         // QUESTION: is this necessary?  or should we let the call to 'safeTransferFrom' fail naturally if approval was not set?    
-        require(nftToken.isApprovedOrOwner(address(this), tokenId), "Transfer approval required.");
+        // deprecated by below *** require(nftToken.isApprovedOrOwner(address(this), tokenId), "Transfer approval required.");
 
         // transfer erc20 shares from caller to this contract.  Will fail if no approval.
-        erc20Token.transferFrom(redeemer, _escrow, amount);
+        //erc20Token.transferFrom(redeemer, _escrow, amount);
+        erc20Token.transferFrom(redeemer, address(this), amount);
         
         // unlock the NFT and transfer it to the caller
         // QUESTION: call safeTransferFrom or normal transferFrom?  Do we assume the redeemer can accept the NFT?
         //nftToken.safeTransferFrom(_escrow, redeemer, tokenId);
-        nftToken.transferFrom(_escrow, redeemer, tokenId);
+        // deprecated by below *** nftToken.transferFrom(_escrow, redeemer, tokenId);
+        NftBank(nftBank).giveTo(redeemer, nft, tokenId);
         
         // delete all metadata and lookup info as it is no longer needed - and saves gas costs
         expunge(nft, tokenId, erc20);
@@ -155,11 +166,11 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
     )
         public
         view
-        returns (address issuer, address erc20, uint totalShares)
+        returns (address issuer, address erc20, uint totalShares, address nftBank)
     {
         require(nft != address(0), "Invalid NFT address.");
         IssuanceData memory data = lookup[nft][tokenId];
-        return (data.issuer, data.erc20, data.totalShares);
+        return (data.issuer, data.erc20, data.totalShares, data.nftBank);
     }
 
     function find(address erc20) 
@@ -182,11 +193,11 @@ contract Issuance is NftTransferApprovable, IERC721Receivable  /* IERC721Receive
         delete nftKeyTupleLookup[erc20];
     }
 
-    function _setEscrow(address escrow) internal {
+    /*function _setEscrow(address escrow) internal {
         require (escrow != address(0));
         require (escrow != _escrow);
 
         _escrow = escrow;
         emit EscrowAddressChanged(escrow);
-    }
+    }*/
 }

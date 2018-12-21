@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-contract NftTransferApprovable {
+contract IssuanceOperationApprovable {
 
     event ApprovalForNft(
         address indexed owner,
@@ -20,38 +20,38 @@ contract NftTransferApprovable {
 
     /**
      * @dev 
-     * @param spender The address which will spend the funds.
+     * @param approvee The address which will spend the funds.
      * @param value The amount of tokens to be spent.
     */
     function setApprovalForNft(
-        address spender, 
+        address approvee, 
         address nft, 
         uint tokenId, 
         bool value
     ) 
         public 
     {
-        require(spender != address(0));
+        require(approvee != address(0));
 
-        _nftApprovals[msg.sender][spender][nft][tokenId] = value;
-        emit ApprovalForNft(msg.sender, spender, nft, tokenId, value);
+        _nftApprovals[msg.sender][approvee][nft][tokenId] = value;
+        emit ApprovalForNft(msg.sender, approvee, nft, tokenId, value);
     }
 
     function setApprovalForAll(
-        address spender, 
+        address approvee, 
         bool value
     ) 
         public 
     {
-        require(spender != address(0));
+        require(approvee != address(0));
 
-        _operatorApprovals[msg.sender][spender] = value;
-        emit ApprovalForAll(msg.sender, spender, value);
+        _operatorApprovals[msg.sender][approvee] = value;
+        emit ApprovalForAll(msg.sender, approvee, value);
     }
 
     function isApprovedForNft(
         address owner, 
-        address spender, 
+        address caller, 
         address nft, 
         uint tokenId
     ) 
@@ -59,22 +59,22 @@ contract NftTransferApprovable {
         view 
         returns (bool) 
     {
-        return _nftApprovals[owner][spender][nft][tokenId];
+        return _nftApprovals[owner][caller][nft][tokenId];
     }
 
     function isApprovedForAll(
         address owner, 
-        address spender
+        address caller
     ) 
         public 
         view 
         returns (bool) 
     {
-        return _operatorApprovals[owner][spender];
+        return _operatorApprovals[owner][caller];
     }
 
     function _isApprovedOrMessageSender(
-        address spender,
+        address owner,
         address nft,
         uint256 tokenId
     )
@@ -82,15 +82,15 @@ contract NftTransferApprovable {
         view
         returns (bool)
     {
-        address owner = msg.sender;
+        address caller = msg.sender;
 
         // Disable solium check because of
         // https://github.com/duaraghav8/Solium/issues/175
         // solium-disable-next-line operator-whitespace
         return (
-            owner == spender ||
-            isApprovedForAll(owner, spender) ||
-            isApprovedForNft(owner, spender, nft, tokenId)
+            caller == owner ||
+            isApprovedForAll(owner, caller) ||
+            isApprovedForNft(owner, caller, nft, tokenId)
         );
     }
 

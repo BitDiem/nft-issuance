@@ -34,13 +34,15 @@ contract IssuanceFrontEnd {
         uint supply,
         StandardTokenFactory.TokenType tokenType
     ) 
-        public
+        public 
+        returns (address)
     {
         validateNft(nft, tokenId);
 
         address issuer = msg.sender;
         address shares = StandardTokenFactory.createTokenForCaller(tokenName, tokenSymbol, supply, tokenType);
         _issuance.issue(issuer, nft, tokenId, shares, supply);
+        return shares;
     }
 
     /**
@@ -54,13 +56,15 @@ contract IssuanceFrontEnd {
         uint supply,
         ITokenFactory tokenFactory
     ) 
-        public
+        public 
+        returns (address)
     {
         validateNft(nft, tokenId);
 
         address issuer = msg.sender;
         address shares = tokenFactory.createToken(tokenName, tokenSymbol, supply, issuer);
         _issuance.issue(issuer, nft, tokenId, shares, supply);
+        return shares;
     }
 
     function redeem(
@@ -73,7 +77,7 @@ contract IssuanceFrontEnd {
         _issuance.redeem(redeemer, erc20Shares, amount);
     }
 
-    function find(
+    /*function find(
         address nft,
         uint tokenId
     )
@@ -90,7 +94,7 @@ contract IssuanceFrontEnd {
         returns (address nft, uint tokenId) 
     {
         return _issuance.find(erc20);
-    }
+    }*/
 
     // who can set the voting manager?  anyone! but the proposed module must be on an approved list
     function setVotingManager(

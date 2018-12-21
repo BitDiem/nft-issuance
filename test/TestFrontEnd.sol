@@ -6,9 +6,11 @@ import "openzeppelin-solidity/contracts/token/ERC721/IERC721.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../contracts/issue/Issuance.sol";
 import "../contracts/token/SharesToken.sol";
+import "../contracts/frontend/IssuanceFrontEnd.sol";
+import "../contracts/frontend/StandardTokenFactory.sol";
 import "./mocks/MockNft.sol";
 
-contract TestIssuance {
+contract TestFrontEnd {
 
     function testIssuance() public {
 
@@ -22,21 +24,25 @@ contract TestIssuance {
 
         Assert.equal(nft.ownerOf(tokenId), issuer, "Owner of token should be the issuer");
 
-        // create a token representing shares, with 10 supply and entire supply held by this contract
-        IERC20 token = new SharesToken("testName", "testSymbol", issuer, numberOfShares);
+        Issuance issuance = Issuance(DeployedAddresses.Issuance());// new Issuance();
 
-        Issuance issuance = new Issuance();
+        // expect that the address of issuance and this contract are different
+        // how?
+
+        IssuanceFrontEnd fe = new IssuanceFrontEnd(issuance);
 
         // approve the issuance contract for transferring the NFT token
         nft.approve(issuance, tokenId);
         //nft.setApprovalForAll(issuance, true);
 
-        // approve this contract for being able to call the Issuance contract on behalf of the token owner
-        // ERROR - approval should not be needed since the caller (this) is the same as the spender
-        //issuance.setApprovalForNft(issuer, nft, tokenId, true);
-        //issuance.setApprovalForAll(issuer, nft);
 
-        issuance.issue(issuer, nft, tokenId, token, 10);
+        // approve the frontend contract for being able to call the Issuance contract on behalf of the token owner
+        issuance.setApprovalForNft(fe, nft, tokenId, true);
+        //issuance.setApprovalForAll(fe, true);
+
+
+        address tokenAddr = fe.issue(nft, tokenId, "FE-Token", "FET", numberOfShares, StandardTokenFactory.TokenType.ERC20);
+        IERC20 token = IERC20(tokenAddr);
         (,,, address bank) = issuance.find(nft, tokenId);
         address tokenHolder = bank; // address(issuance);
 
@@ -45,7 +51,7 @@ contract TestIssuance {
         // approve the issuance contract for transferring the shares tokens
         token.approve(issuance, 99999);
 
-        issuance.redeem(issuer, token, numberOfShares);
+        fe.redeem(token, numberOfShares);
 
         Assert.equal(nft.ownerOf(tokenId), address(issuer), "Owner of token should now be the issuer");
     }
